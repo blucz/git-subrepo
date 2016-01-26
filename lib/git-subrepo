@@ -54,6 +54,7 @@ a,all       Perform command on all current subrepos
 b,branch=   Specify an upstream branch
 f,force     Force certain operations
 F,fetch     Fetch the upstream content first
+l,log       Log the contents of newly created reference
 r,remote=   Specify an upstream remote
 u,update    Add the --branch and/or --remote overrides to .gitrepo
  
@@ -79,6 +80,7 @@ main() {
   local force_wanted=false      # Force certain operations
   local fetch_wanted=false      # Fetch requested before a command
   local update_wanted=false     # Update .gitrepo with --branch and/or --remote
+  local log_wanted=false        # Log the new branch, for fetch and branch
 
   local old_parent=             # Old subrepo parent commit
   local new_parent=             # New subrepo parent commit
@@ -241,7 +243,13 @@ command:push() {
 command:fetch() {
   command-setup +subdir
   subrepo:fetch
-  say "Fetched '$subrepo_remote' ($subrepo_branch)."
+
+  if $log_wanted; then
+    local branch="subrepo/$subdir"
+    git log $branch
+  else
+    say "Fetched '$subrepo_remote' ($subrepo_branch)."
+  fi
 }
 
 # `git subrepo branch <subdir>` command:
@@ -267,7 +275,11 @@ command:branch() {
   o "Create ref '$refs_subrepo_branch' for branch '$branch'."
   git:make-ref "$refs_subrepo_branch" "$branch"
 
-  say "Created branch '$branch'."
+  if $log_wanted; then
+    git log $branch
+  else
+    say "Created branch '$branch'."
+  fi
 }
 
 # `git subrepo commit <subdir>` command
@@ -472,7 +484,7 @@ subrepo:log() {
   o "Create subrepo branch '$branch_name'."
   CALL subrepo:branch
 
-  OUT=true RUN git log $branch_name
+  git log $branch_name
 }
 
 
@@ -971,6 +983,7 @@ get-command-options() {
           override_remote="$1"
           commit_msg_args+=("--remote=$1")
           shift ;;
+      -l) log_wanted=true ;;
       -u) update_wanted=true
           commit_msg_args+=("--update") ;;
       -q) quiet_wanted=true ;;
