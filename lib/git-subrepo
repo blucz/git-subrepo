@@ -193,6 +193,13 @@ command:init() {
   return 0
 }
 
+# `git subrepo log <subdir>` command:
+command:log() {
+  command-setup +subdir
+
+  subrepo:log
+}
+
 # `git subrepo pull <subdir>` command:
 command:pull() {
   command-setup +subdir
@@ -454,6 +461,20 @@ subrepo:init() {
   o "Create ref '$refs_subrepo_commit'."
   git:make-ref "$refs_subrepo_commit" "$subrepo_commit_ref"
 }
+
+subrepo:log() {
+
+  local branch_name="subrepo/$subdir"
+  if git:branch-exists "$branch_name"; then
+    o "Deleting old '$branch_name' branch."
+    RUN git branch -D "$branch_name"
+  fi
+  o "Create subrepo branch '$branch_name'."
+  CALL subrepo:branch
+
+  OUT=true RUN git log $branch_name
+}
+
 
 # Properly merge a local subrepo branch with upstream and commit to mainline:
 subrepo:pull() {
@@ -1218,7 +1239,7 @@ assert-repo-is-ready() {
     RUN git rev-parse --verify HEAD
 
   # Repo is in a clean state:
-  if [[ $command =~ ^(clone|init|pull|push|branch|commit)$ ]]; then
+  if [[ $command =~ ^(clone|init|log|pull|push|branch|commit)$ ]]; then
     git update-index -q --ignore-submodules --refresh
     git diff-files --quiet --ignore-submodules ||
       error "Can't $command subrepo. Unstaged changes."
